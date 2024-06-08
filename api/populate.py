@@ -2,16 +2,12 @@ import os
 import requests
 from bs4 import BeautifulSoup
 from supabase import create_client, Client
-from dotenv import load_dotenv
 from tqdm import tqdm
 from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
 
-# Load environment variables from .env file
-load_dotenv(dotenv_path=".env")
-
 # Initialize Supabase client
-supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_KEY")
+supabase_url = "https://rgjkrflnxopeixwpsjae.supabase.co"
+supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnamtyZmxueG9wZWl4d3BzamFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTc4MDg1MzAsImV4cCI6MjAzMzM4NDUzMH0.d40jU9GnAyyRugrgmKZeS9aTfAi1_tBCeHzOulyfMAM"
 supabase: Client = create_client(supabase_url, supabase_key)
 
 # Initialize embedding function
@@ -68,5 +64,5 @@ def scrape_book_metadata_and_generate_embeddings(book_id):
 
 if __name__ == "__main__":
     # Example usage
-    for book_id in tqdm(range(1, 10)):  # Adjust range as needed
+    for book_id in tqdm(range(1, 10000)):  # Adjust range as needed
         scrape_book_metadata_and_generate_embeddings(book_id)

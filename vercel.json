@@ -1,16 +1,15 @@
 {
     "version": 2,
-    "name": "connected-books",
     "builds": [
       {
-        "src": "frontend/next.config.js",
-        "use": "@vercel/next"
+        "src": "api/populate.py",
+        "use": "@vercel/python"
       }
     ],
     "routes": [
       {
-        "src": "/(.*)",
-        "dest": "/frontend/$1"
+        "src": "/api/populate",
+        "dest": "api/populate.py"
       }
     ]
   }
