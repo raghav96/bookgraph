@@ -2,6 +2,7 @@ import os
 from supabase import create_client, Client
 from sentence_transformers import SentenceTransformer
 from langchain.vectorstores import SupabaseVectorStore
+from langchain_huggingface import HuggingFaceEmbeddings
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,8 +13,8 @@ supabase_key = os.getenv('SUPABASE_KEY')
 client: Client = create_client(supabase_url, supabase_key)
 
 # Initialize embedding function and vector store
-embedding_function = SentenceTransformer("all-MiniLM-L6-v2")
-docsearch = SupabaseVectorStore(client, table_name="documents", query_name="match_documents", embedding=embedding_function.encode)
+embedding_function = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+docsearch = SupabaseVectorStore(client, table_name="documents", query_name="match_documents", embedding=embedding_function)
 
 def build_graph(source_book_id: str):
     # Fetch top 10 similar books for the source book
