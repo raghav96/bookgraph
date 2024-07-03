@@ -67,10 +67,10 @@ async function aggregateSimilarBooks(bookId: string, matchThreshold: number, mat
 
   for (const bookId of topKeys) {
     const outputData = await getMetadataForBookId(bookId);
-    outputArray.push(outputData);
+    outputArray.push({id: bookId, data: outputData});
   }
 
-  console.log(outputArray);
+  console.log("outputArray: ", outputArray);
 
   return outputArray;
 }
@@ -79,7 +79,7 @@ async function aggregateSimilarBooks(bookId: string, matchThreshold: number, mat
 async function getMetadataForBookId(bookId: string) {
   const { data, error } = await supabase
     .from('documents')
-    .select('metadata')
+    .select('*')
     .eq('metadata ->> book_id', bookId);
 
   if (error) {
@@ -116,19 +116,31 @@ Deno.serve(async (req) => {
     const links = [];
     const bookIdToNode = new Map();
 
+    console.log("selectedBook: ", selectedBook);
+
     // Add the selected book as the first node
     const selectedBookNode = {
       id: selectedBook.title,
+      metadata: {
+        id: bookId, 
+        data: selectedBook
+      },
       group: selectedBook.metadata?.locc.split('; ')[0]
     };
     nodes.push(selectedBookNode);
     bookIdToNode.set(bookId, selectedBookNode);
 
+    console.log("similarBooks: ", similarBooks);
+
     // Add similar books as nodes
     for (const book of similarBooks) {
       const node = {
-        id: book.title,
-        group: book.metadata?.locc.split('; ')[0]
+        id: book.data.title,
+        metadata: {
+          id: book.data.book_id,
+          data: book.data
+        },
+        group: book.data.metadata?.locc.split('; ')[0]
       };
       nodes.push(node);
       bookIdToNode.set(book.book_id, node);
