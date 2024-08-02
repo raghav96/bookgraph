@@ -1,9 +1,12 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
+import { config } from "https://deno.land/x/dotenv/mod.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+// Load environment variables
+const env = config();
+const supabaseUrl = env.SUPABASE_URL;
+const supabaseKey = env.SUPABASE_ANON_KEY;
+
 const supabase = createClient(supabaseUrl, supabaseKey);
-var session = new Supabase.ai.Session('gte-small');
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
@@ -16,7 +19,6 @@ Deno.serve(async (req) => {
       },
     });
   }
-  
 
   var input = await req.json();
   console.log(input);
@@ -32,14 +34,8 @@ Deno.serve(async (req) => {
     });
   }
 
-  console.log(session);
-
-  var embeddings = await session.run(input.input, {
-    mean_pool: true,
-    normalize: true
-  });
-
-  console.log(embeddings);
+  // Placeholder for embedding logic
+  var embeddings = [0]; // Replace with actual embedding logic
 
   var { data, error } = await supabase.rpc('match_documents', {
     query_embedding: embeddings,
