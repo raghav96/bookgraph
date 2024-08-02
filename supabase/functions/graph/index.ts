@@ -8,7 +8,7 @@ async function getEmbeddingsForBook(bookId: string) {
   const { data, error } = await supabase
     .from('documents')
     .select('embedding')
-    .eq('metadata ->> book_id', bookId);
+    .eq('metadata->>book_id', bookId);
 
   if (error) {
     throw new Error(`Error fetching embeddings for book ID ${bookId}: ${error.message}`);
@@ -36,14 +36,10 @@ async function aggregateSimilarBooks(bookId: string, matchThreshold: number, mat
   const embeddings = await getEmbeddingsForBook(bookId);
   const similarityMap = new Map();
 
-  console.log("embeddings: ", embeddings);
-
   for (const embedding of embeddings) {
     const similarDocs = await getSimilarBooks(embedding, matchThreshold, matchCount, bookId);
-    //console.log("similar docs: ", similarDocs);
     for (const doc of similarDocs) {
       const relatedBookId = doc.metadata.book_id;
-      //console.log("related_bookId: ", relatedBookId);
       if (relatedBookId !== bookId) {
         const similarity = 1 - doc.similarity;
         if (similarityMap.has(relatedBookId)) {
@@ -54,39 +50,35 @@ async function aggregateSimilarBooks(bookId: string, matchThreshold: number, mat
       }
     }
   }
-  
-  console.log("similarity map: ", similarityMap);
 
   const similarityArray = Array.from(similarityMap.entries());
-
-  console.log(similarityArray);
   similarityArray.sort((a, b) => b[1] - a[1]);
 
-  const topKeys = similarityArray.slice(0, 20).map(([key, value]) => key);
-  const outputArray = Array.from([])
+  const topKeys = similarityArray.slice(0, 20).map(([key]) => key);
+  const outputArray = [];
 
   for (const bookId of topKeys) {
     const outputData = await getMetadataForBookId(bookId);
-    outputArray.push({id: bookId, data: outputData});
+    if (outputData) {
+      outputArray.push({ id: bookId, data: outputData });
+    }
   }
-
-  console.log("outputArray: ", outputArray);
 
   return outputArray;
 }
 
-
 async function getMetadataForBookId(bookId: string) {
   const { data, error } = await supabase
     .from('documents')
-    .select('*')
-    .eq('metadata ->> book_id', bookId);
+    .select('metadata')
+    .eq('metadata->>book_id', bookId)
+    .single();
 
   if (error) {
     throw new Error(`Error fetching metadata for book ID ${bookId}: ${error.message}`);
   }
 
-  return data[0]?.metadata;
+  return data.metadata;
 }
 
 Deno.serve(async (req) => {
@@ -109,6 +101,11 @@ Deno.serve(async (req) => {
 
   try {
     const selectedBook = await getMetadataForBookId(bookId);
+    if (!selectedBook) {
+      return new Response(JSON.stringify({ error: 'Book not found' }), {
+        status: 404,
+      });
+    }
     const similarBooks = await aggregateSimilarBooks(bookId, matchThreshold, topN);
 
     // Transform data into nodes and links
@@ -116,23 +113,17 @@ Deno.serve(async (req) => {
     const links = [];
     const bookIdToNode = new Map();
 
-    console.log("selectedBook: ", selectedBook);
-
-    // Add the selected book as the first node
     const selectedBookNode = {
       id: selectedBook.title,
       metadata: {
-        id: bookId, 
+        id: bookId,
         data: selectedBook
       },
-      group: selectedBook.metadata?.locc.split('; ')[0]
+      group: selectedBook.locc.split('; ')[0] // Assuming locc is a property in the metadata
     };
     nodes.push(selectedBookNode);
     bookIdToNode.set(bookId, selectedBookNode);
 
-    console.log("similarBooks: ", similarBooks);
-
-    // Add similar books as nodes
     for (const book of similarBooks) {
       const node = {
         id: book.data.title,
@@ -140,15 +131,14 @@ Deno.serve(async (req) => {
           id: book.data.book_id,
           data: book.data
         },
-        group: book.data.metadata?.locc.split('; ')[0]
+        group: book.data.locc.split('; ')[0] // Assuming locc is a property in the metadata
       };
       nodes.push(node);
       bookIdToNode.set(book.book_id, node);
 
-      // Create a link between the selected book and each similar book
       links.push({
         source: selectedBook.title,
-        target: book.title,
+        target: book.data.title,
         value: 1
       });
     }
