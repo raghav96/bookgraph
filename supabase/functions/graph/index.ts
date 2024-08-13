@@ -4,6 +4,12 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, x-api-key, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+}
+
 async function getEmbeddingsForBook(bookId: string) {
   const { data, error } = await supabase
     .from('documents')
@@ -90,9 +96,19 @@ async function getMetadataForBookId(bookId: string) {
 }
 
 Deno.serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { 
+      status: 204, 
+      headers: corsHeaders 
+    });
+  }
+  
+
   if (req.method !== 'GET') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
+      headers: {...corsHeaders, 'Content-Type': 'application/json'}
     });
   }
 
@@ -104,6 +120,7 @@ Deno.serve(async (req) => {
   if (!bookId) {
     return new Response(JSON.stringify({ error: 'Missing book_id parameter' }), {
       status: 400,
+      headers: {...corsHeaders, 'Content-Type': 'application/json'}
     });
   }
 
@@ -180,11 +197,13 @@ Deno.serve(async (req) => {
       JSON.stringify(graphData),
       {
         status: 200,
+        headers: {...corsHeaders, 'Content-Type': 'application/json'}
       }
     );
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
+      headers: {...corsHeaders, 'Content-Type': 'application/json'}
     });
   }
 });

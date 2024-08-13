@@ -5,36 +5,32 @@ const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 var session = new Supabase.ai.Session('gte-small');
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, x-api-key, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+}
+
 Deno.serve(async (req) => {
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      },
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { 
+      status: 204, 
+      headers: corsHeaders 
     });
   }
-  
 
-  var input = await req.json();
-  console.log(input);
+  const url = new URL(req.url);
+  const input = url.searchParams.get('input');
 
   if (!input) {
     return new Response(JSON.stringify({ error: "No input provided" }), {
       status: 400,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      },
+      headers: {...corsHeaders, 'Content-Type': 'application/json'}
     });
   }
 
-  console.log(session);
-
-  var embeddings = await session.run(input.input, {
+  var embeddings = await session.run(input, {
     mean_pool: true,
     normalize: true
   });
@@ -50,22 +46,17 @@ Deno.serve(async (req) => {
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      },
+      headers: {...corsHeaders, 'Content-Type': 'application/json'}
     });
   }
 
-  console.log(data);
+  // Remove duplicate books based on metadata.book_id
+  const uniqueBooks = Array.from(
+    new Map(data.map(book => [book.metadata.book_id, book])).values()
+  );
 
-  return new Response(JSON.stringify({ "top10Books": data }), {
+  return new Response(JSON.stringify({ "top10Books": uniqueBooks }), {
     status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
+    headers: {...corsHeaders, 'Content-Type': 'application/json'}
   });
 });
